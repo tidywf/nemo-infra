@@ -10,8 +10,7 @@ Infrastructure for [nemo](https://github.com/umccr/nemo) using AWS CDK.
   - `bin/`: entrypoint
   - `lib/`: stacks
 
-- **App**: application written in e.g. TypeScript that defines one or more
-  **Stacks**.
+- **App**: application written in e.g. TypeScript that defines one or more **Stacks**.
 - **Stack**: a logical grouping of **Constructs**.
 - **Construct**: a logical grouping of **Resources**.
 - **Resource**: e.g. S3 buckets, Lambda, DynamoDB.
@@ -55,22 +54,26 @@ A construct class takes three params:
 
 ## Commands
 
-| Command                  | Description                       |
-| ------------------------ | --------------------------------- |
-| `cdk init -l typescript` | initialize cdk project            |
-| `npm run build`          | compile ts to js                  |
-| `npm run watch`          | watch for changes and compile     |
-| `npm run test`           | run jest unit tests               |
-| `npx cdk deploy`         | deploy stack                      |
-| `npx cdk diff`           | compare current to deployed stack |
-| `npx cdk synth`          | emit synthesized cfn template     |
-| `npx cdk destroy`        | destroy stack                     |
-| `npx cdk bootstrap`      | bootstrap cdk project             |
+| Command                    | Description                                          |
+| ------------------------   | ---------------------------------                    |
+| `cdk init -l typescript`   | initialize cdk project                               |
+| `npx tsc --init`           | generate tsconfig.json                               |
+| `npm run cdk -- --version` | get local cdk version via `package.json` script      |
+| `npx cdk --version`        | same as above but more direct                        |
+| `npm run build`            | compile ts to js                                     |
+| `npm run watch`            | watch for changes and compile                        |
+| `npm run test`             | run jest unit tests                                  |
+| `npx cdk deploy`           | deploy stack                                         |
+| `npx cdk diff`             | compare current to deployed stack                    |
+| `npx cdk synth`            | emit synthesized cfn template                        |
+| `npx cdk destroy`          | destroy stack                                        |
+| `npx cdk bootstrap`        | bootstrap cdk project (**once per account/region!**) |
 
 ## Tips
 
-- Debug bucket names
-  - Use `CfnOutput` and check `cdk synth`
+### Debug bucket names
+
+- Use `CfnOutput` and check `cdk synth`
 
 ```ts
 import { CfnOutput } from 'aws-cdk-lib';
@@ -103,3 +106,19 @@ Then:
 ```shell
 cdk deploy --parameters duration=8
 ```
+
+### cdk bootstrap status
+
+```shell
+aws cloudformation describe-stacks --stack-name CDKToolkit
+```
+
+- `cdk bootstrap` creates:
+  - an S3 bucket for the CF templates and Lambda assets before deployment
+  - an ECR repo for container images used during deployment
+  - IAM roles that CDK assumes when deploying
+
+### ECR repo
+
+- `aws ecr describe-repositories`
+- `aws ecr describe-images --repository-name cdk-hnb659fds-container-assets-843407916570-ap-southeast-2`
