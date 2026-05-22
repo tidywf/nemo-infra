@@ -49,7 +49,10 @@ docker run -d \
   -v ~/.aws-lambda-rie:/aws-lambda \
   -p 9000:8080 \
   --entrypoint /aws-lambda/aws-lambda-rie \
-  -e S3_OUTPUT_BUCKET=test-bucket \
+  -e S3_INPUT_BUCKET=umccr-temp-dev \
+  -e S3_INPUT_PREFIX=diakumis/tidywigits/inputs/oncoanalyser-wgts-dna \
+  -e S3_OUTPUT_BUCKET=umccr-temp-dev \
+  -e S3_OUTPUT_PREFIX=diakumis/tidywigits/outputs \
   tidywigits-lambda:0.0.7.9003 \
   python3 -m awslambdaric handler.handler
 ```
@@ -63,7 +66,7 @@ your handler as the event argument, just like AWS would.
 ```shell
 curl -s -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" \
   -H "Content-Type: application/json" \
-  -d '{"detail": {"sample_id": "TEST001", "s3_path": "s3://test-input/TEST001/"}}'
+  -d '{"detail": {"input_id": "TEST001"}}'
 ```
 
 - Clean up:

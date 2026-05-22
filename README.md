@@ -122,3 +122,9 @@ aws cloudformation describe-stacks --stack-name CDKToolkit
 
 - `aws ecr describe-repositories`
 - `aws ecr describe-images --repository-name cdk-hnb659fds-container-assets-843407916570-ap-southeast-2`
+
+### Override context values
+
+```
+npx cdk deploy --context s3OutputBucketName=my-other-bucket
+```

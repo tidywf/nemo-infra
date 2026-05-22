@@ -1,0 +1,11 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/app.ts",
+  "context": {
+    "s3InputBucketName": "umccr-temp-dev",
+    "s3InputPrefix": "diakumis/tidywigits/inputs/oncoanalyser-wgts-dna",
+    "s3OutputBucketName": "umccr-temp-dev",
+    "s3OutputPrefix": "diakumis/tidywigits/outputs",
+    "imageTag": "0.0.7.9003",
+    "lambdaMemoryMB": 6144
+  }
+}
