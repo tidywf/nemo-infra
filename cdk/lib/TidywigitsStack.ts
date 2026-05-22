@@ -17,15 +17,9 @@ export class TidywigitsStack extends cdk.Stack {
 
     const { ctx } = props;
 
-    const ecrRepo = new ecr.Repository(this, 'TidywigitsRepo', {
-      repositoryName: 'tidywigits-lambda',
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    const ecrRepo = ecr.Repository.fromRepositoryName(this, 'TidywigitsRepo', 'tidywigits-lambda');
 
-    const outputBucket = new s3.Bucket(this, 'OutputBucket', {
-      bucketName: ctx.s3OutputBucketName,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    const outputBucket = s3.Bucket.fromBucketName(this, 'OutputBucket', ctx.s3OutputBucketName);
 
     const role = new iam.Role(this, 'LambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -68,16 +62,18 @@ export class TidywigitsStack extends cdk.Stack {
       restApiName: 'tidywigits-manual',
       description: 'Manual POST trigger for the tidywigits Lambda',
     });
-    api.root.addMethod('POST', new apigateway.LambdaIntegration(fn));
+    api.root.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(fn, {
+        proxy: false,
+        requestParameters: {
+          'integration.request.header.X-Amz-Invocation-Type': "'Event'",
+        },
+        integrationResponses: [{ statusCode: '202' }],
+      }),
+      { methodResponses: [{ statusCode: '202' }] },
+    );
 
-    new cdk.CfnOutput(this, 'EcrRepoUri', {
-      value: ecrRepo.repositoryUri,
-      description: 'ECR repo where to push tidywigits container image',
-    });
-    new cdk.CfnOutput(this, 'OutputBucketName', {
-      value: outputBucket.bucketName,
-      description: 'S3 bucket for Parquet results',
-    });
     new cdk.CfnOutput(this, 'LambdaFunctionName', {
       value: fn.functionName,
     });

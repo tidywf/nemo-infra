@@ -22,6 +22,28 @@ docker build \
   -t tidywigits-lambda:0.0.7.9003 .
 ```
 
+## Push to ECR
+
+```shell
+ECR=843407916570.dkr.ecr.ap-southeast-2.amazonaws.com
+REPO=tidywigits-lambda
+VERSION=0.0.7.9003
+
+# Authenticate
+aws ecr get-login-password --region ap-southeast-2 \
+  | docker login --username AWS --password-stdin $ECR
+
+# Tag and push
+docker tag $REPO:$VERSION $ECR/$REPO:$VERSION
+docker push $ECR/$REPO:$VERSION
+
+# Update Lambda to pick up the new image digest (required even if the tag hasn't changed)
+aws lambda update-function-code \
+  --function-name TidywigitsStack-TidywigitsFunction0F66A7D8-mmyNnhRZApDk \
+  --image-uri $ECR/$REPO:$VERSION \
+  --region ap-southeast-2
+```
+
 ## Smoke test with RIE
 
 The [Lambda Runtime Interface Emulator](https://github.com/aws/aws-lambda-runtime-interface-emulator)
@@ -83,3 +105,34 @@ make start
 make invoke
 make stop
 ```
+
+## Invoke
+
+Via API Gateway (returns 202 immediately, Lambda runs async):
+
+```shell
+curl -s -XPOST "https://7xv9bhxwwk.execute-api.ap-southeast-2.amazonaws.com/prod/" \
+  -H "Content-Type: application/json" \
+  -d '{"detail": {"input_id": "202509103c7b1a3b"}}'
+```
+
+Via CLI (also async):
+
+```shell
+aws lambda invoke \
+  --function-name TidywigitsStack-TidywigitsFunction0F66A7D8-mmyNnhRZApDk \
+  --invocation-type Event \
+  --payload '{"detail": {"input_id": "202509103c7b1a3b"}}' \
+  --cli-binary-format raw-in-base64-out \
+  --region ap-southeast-2 \
+  response.json
+```
+
+## Logs
+
+```shell
+aws logs tail /aws/lambda/TidywigitsStack-TidywigitsFunction0F66A7D8-mmyNnhRZApDk \
+  --region ap-southeast-2 \
+  --follow
+```
+

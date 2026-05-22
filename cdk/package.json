@@ -1,0 +1,19 @@
+{
+  "name": "nemo-cdk",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "cdk": "cdk"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.257.0",
+    "constructs": "^10.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "aws-cdk": "^2.1124.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}
