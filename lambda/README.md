@@ -1,59 +1,120 @@
 # lambda
 
-Lambda container for running nemo-related jobs.
+Lambda container for running nemo tidy jobs.
 
 ## Files
 
-- `handler.py`: Lambda entrypoint. Exports `handler` function that receives the event,
-  extracts required fields, then calls `tidywigits.R tidy`.
-- `sync.py`: for syncing data to and from S3, within the Lambda.
-- `Dockerfile`: installs `awslambdaric` (Python Lambda Runtime Interface Client)
-  on top of the tidywigits base image conda env, copies in `handler.py` + `sync.py`, and sets
-  `python3 -m awslambdaric` as the entrypoint. `pip` resolves to the available conda env's own pip.
-  - `awslambdaric` is what makes a plain Python container work as
-    a Lambda. It implements the Lambda Runtime API polling loop that AWS manages automatically in
-    managed runtimes. Without it, Lambda has no way to invoke the handler function.
+- `handler.py`: Lambda entrypoint (`handler.handler`). Reads `detail.input_id`,
+  resolves the workflow (`detail.workflow`, else the one whose `detailType` matches the
+  event's `detail-type`, else `NEMO_WORKFLOW`), generates a ULID `output_id`, then:
+    1. `nemo.R sync`: downloads only the raw files the workflow's `schema.yaml` files parse
+    2. `nemo.R tidy --workflow <wf>`: tidies them to Parquet
+    3. `aws s3 sync`: uploads the outputs to `s3://<S3_OUTPUT_BUCKET>/<s3OutputPrefix>/<output_id>/`
+- `Dockerfile`: extends `nemo-image`, installing `awslambdaric`, `awscli` and
+  `python-ulid` with the conda env's own `pip`, and runs `python3 -m awslambdaric`.
+  `awslambdaric` (Lambda Runtime Interface Client) implements the Runtime API polling
+  loop that managed runtimes provide; without it Lambda cannot invoke the handler.
+- `Makefile`: build and local RIE smoke-test targets.
 
-## Image build
+### Environment
 
-```shell
-docker build \
-  --platform linux/amd64 \
-  -t tidywigits-lambda:0.0.7.9003 .
-```
+| Variable           | Source (deployed)          | Purpose                                                       |
+| ------------------ | -------------------------- | ------------------------------------------------------------- |
+| `S3_INPUT_BUCKET`  | `s3InputBucketName`        | Input bucket                                                  |
+| `S3_OUTPUT_BUCKET` | `s3OutputBucketName`       | Output bucket                                                 |
+| `NEMO_WORKFLOWS`   | `workflows` (JSON)         | Per-workflow `detailType`, `s3InputPrefix`, `s3OutputPrefix`  |
+| `NEMO_WORKFLOW`    | `nemoWorkflow`             | Fallback workflow (default `wigits`)                          |
 
-## Push to ECR
+All set from `cdk/cdk.json` context.
+
+## Build and push to ECR
+
+Always build for `linux/amd64`: `nemo-image` is multi-arch, so a bare build on Apple
+Silicon yields an arm64 image the (x86_64) Lambda rejects.
 
 ```shell
 ECR=843407916570.dkr.ecr.ap-southeast-2.amazonaws.com
-REPO=tidywigits-lambda
-VERSION=0.0.7.9003
+REPO=nemo-lambda   # local image name (Makefile IMAGE) and ECR repo (NemoStack.ts)
+VERSION=0.0.0.9004 # must match imageTag in cdk/cdk.json
 
-# Authenticate
+make build
+
+# one-off: the stack imports the repo, it does not create it
+aws ecr create-repository --repository-name $REPO --region ap-southeast-2
+
 aws ecr get-login-password --region ap-southeast-2 \
   | docker login --username AWS --password-stdin $ECR
-
-# Tag and push
 docker tag $REPO:$VERSION $ECR/$REPO:$VERSION
 docker push $ECR/$REPO:$VERSION
+```
 
-# Update Lambda to pick up the new image digest (required even if the tag hasn't changed)
+Then `npx cdk deploy` from `cdk/`.
+
+### Redeploying an image under an existing tag
+
+The Lambda pins the image digest at deploy time, so re-pushing the same tag needs an
+explicit update:
+
+```shell
 aws lambda update-function-code \
-  --function-name TidywigitsStack-TidywigitsFunction0F66A7D8-mmyNnhRZApDk \
+  --function-name $FN \
   --image-uri $ECR/$REPO:$VERSION \
   --region ap-southeast-2
 ```
 
-## Smoke test with RIE
+## Stack outputs
+
+The function name and API URL are generated and change if the stack or construct is
+renamed, so read them from the stack outputs:
+
+```shell
+output() {
+  aws cloudformation describe-stacks --stack-name NemoStack \
+    --region ap-southeast-2 \
+    --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" \
+    --output text
+}
+FN=$(output LambdaFunctionName)
+API=$(output ApiGatewayUrl)
+```
+
+## Invoke
+
+Both paths are async: API Gateway returns 202, the CLI `Event` invocation returns
+immediately. `workflow` is optional (falls back as above).
+
+```shell
+PAYLOAD='{"detail": {"input_id": "202509103c7b1a3b", "workflow": "wigits"}}'
+
+# API Gateway
+curl -s -XPOST "$API" -H "Content-Type: application/json" -d "$PAYLOAD"
+
+# CLI
+aws lambda invoke \
+  --function-name $FN \
+  --invocation-type Event \
+  --payload "$PAYLOAD" \
+  --cli-binary-format raw-in-base64-out \
+  --region ap-southeast-2 \
+  response.json
+```
+
+In production the trigger is the EventBridge rule on `WigitsRunCompleted`.
+
+## Logs
+
+```shell
+aws logs tail /aws/lambda/$FN --region ap-southeast-2 --follow
+```
+
+## Local smoke test (RIE)
 
 The [Lambda Runtime Interface Emulator](https://github.com/aws/aws-lambda-runtime-interface-emulator)
-(RIE) is a lightweight local web server that mimics the AWS Lambda Runtime API
-(which AWS uses internally to invoke the function).
-Running the container with the RIE mounted stands in for AWS, as it boots the container,
-starts the `awslambdaric` polling loop, then listens on port 8080 (mapped to 9000 on the host)
-for incoming invocation requests.
+(RIE) is a small local server mimicking the Lambda Runtime API. Mounted into the
+container as its entrypoint, it starts the `awslambdaric` loop and listens on port 8080
+(mapped to 9000 on the host).
 
-- Install the RIE binary:
+Install once (`x86_64` to match the `linux/amd64` image):
 
 ```shell
 mkdir -p ~/.aws-lambda-rie
@@ -62,77 +123,16 @@ curl -Lo ~/.aws-lambda-rie/aws-lambda-rie \
 chmod +x ~/.aws-lambda-rie/aws-lambda-rie
 ```
 
-- Start the container:
+Then, with AWS credentials exported in the shell (passed through for S3 access):
 
 ```shell
-docker run -d \
-  --platform linux/amd64 \
-  --name lambda-test \
-  -v ~/.aws-lambda-rie:/aws-lambda \
-  -p 9000:8080 \
-  --entrypoint /aws-lambda/aws-lambda-rie \
-  -e S3_INPUT_BUCKET=umccr-temp-dev \
-  -e S3_INPUT_PREFIX=diakumis/tidywigits/inputs/oncoanalyser-wgts-dna \
-  -e S3_OUTPUT_BUCKET=umccr-temp-dev \
-  -e S3_OUTPUT_PREFIX=diakumis/tidywigits/outputs \
-  tidywigits-lambda:0.0.7.9003 \
-  python3 -m awslambdaric handler.handler
-```
-
-- Send mock event:
-
-`POST /2015-03-31/functions/function/invocations` is the RIE's
-standard endpoint for triggering an invocation. You send it a JSON payload and it passes that to
-your handler as the event argument, just like AWS would.
-
-```shell
-curl -s -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" \
-  -H "Content-Type: application/json" \
-  -d '{"detail": {"input_id": "TEST001"}}'
-```
-
-- Clean up:
-
-```shell
-docker rm lambda-test
-```
-
-All together via Makefile:
-
-```
 make build
-make start
-make invoke
+make start                      # docker run with RIE, env from Makefile defaults
+make invoke                     # POST to /2015-03-31/functions/function/invocations
+make invoke WORKFLOW=dragen INPUT_ID=<id>
+make logs
 make stop
 ```
 
-## Invoke
-
-Via API Gateway (returns 202 immediately, Lambda runs async):
-
-```shell
-curl -s -XPOST "https://7xv9bhxwwk.execute-api.ap-southeast-2.amazonaws.com/prod/" \
-  -H "Content-Type: application/json" \
-  -d '{"detail": {"input_id": "202509103c7b1a3b"}}'
-```
-
-Via CLI (also async):
-
-```shell
-aws lambda invoke \
-  --function-name TidywigitsStack-TidywigitsFunction0F66A7D8-mmyNnhRZApDk \
-  --invocation-type Event \
-  --payload '{"detail": {"input_id": "202509103c7b1a3b"}}' \
-  --cli-binary-format raw-in-base64-out \
-  --region ap-southeast-2 \
-  response.json
-```
-
-## Logs
-
-```shell
-aws logs tail /aws/lambda/TidywigitsStack-TidywigitsFunction0F66A7D8-mmyNnhRZApDk \
-  --region ap-southeast-2 \
-  --follow
-```
-
+Override any Makefile variable (`S3_INPUT_BUCKET`, `NEMO_WORKFLOWS`, `INPUT_ID`, …)
+on the command line.
