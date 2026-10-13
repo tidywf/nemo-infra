@@ -86,8 +86,10 @@ immediately. `workflow` is optional (falls back as above).
 ```shell
 PAYLOAD='{"detail": {"input_id": "202509103c7b1a3b", "workflow": "wigits"}}'
 
-# API Gateway
-curl -s -XPOST "$API" -H "Content-Type: application/json" -d "$PAYLOAD"
+# API Gateway: IAM auth, so requests must be SigV4-signed
+# (pip install awscurl; caller needs execute-api:Invoke)
+awscurl --service execute-api --region ap-southeast-2 \
+  -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$API"
 
 # CLI
 aws lambda invoke \

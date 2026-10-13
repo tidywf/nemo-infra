@@ -1,26 +1,25 @@
 # cdk
 
-AWS CDK app (TypeScript) that defines the tidywigits infrastructure.
+AWS CDK app (TypeScript) that defines the nemo Lambda infrastructure.
 
 ## Files
 
 - `bin/app.ts`: CDK entrypoint. Reads config from `cdk.json` via `getContext` and
-  instantiates `TidywigitsStack`.
+  instantiates `NemoStack`.
 
 - `cdk.json`: CDK config. The `app` field tells CDK how to run the entrypoint. The `context`
-  block holds all deployment parameters (bucket names, image tag, memory).
+  block holds all deployment parameters (bucket names, per-workflow settings, image tag,
+  memory, `/tmp` size).
 
 - `helpers/parameters.ts`: typed wrapper around `cdk.json`. `getContext()` reads the raw
-  context values via CDK's API and returns them as a `TidywigitsContext` object, giving the
+  context values via CDK's API and returns them as a `NemoContext` object, giving the
   stack code type safety and autocomplete instead of scattered `getContext()` calls with bare
-  strings.
+  strings. It also checks that `nemoWorkflow` is a `workflows` key.
 
-- `lib/TidywigitsStack.ts`: the single active stack. Defines:
-  - ECR repo: where the tidywigits Lambda container image is stored
-  - S3 bucket: output bucket for Parquet results
-  - IAM role: CloudWatch Logs + S3 read (input bucket) + S3 write (output bucket)
-  - Lambda function: container image from ECR, 15 min timeout, configurable memory
-  - API Gateway: single POST endpoint for manual invocation
+- `lib/NemoStack.ts`: the single active stack: imported ECR repo and S3 buckets, IAM
+  role, Lambda, one EventBridge rule per workflow, IAM-auth API Gateway, and the
+  `LambdaFunctionName` / `ApiGatewayUrl` outputs. See `docs/architecture.md` for
+  details.
 
 ## Configuration
 
@@ -28,12 +27,17 @@ All values live in `cdk.json` under `context`; nothing is hardcoded in the stack
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `s3InputBucketName` | _(required)_ | S3 bucket containing WiGiTS pipeline outputs |
-| `s3InputPrefix` | _(required)_ | Key prefix within the input bucket (e.g. `diakumis/tidywigits/inputs/oncoanalyser-wgts-dna`) |
+| `s3InputBucketName` | _(required)_ | S3 bucket containing the pipeline outputs |
 | `s3OutputBucketName` | _(required)_ | S3 bucket for Parquet results |
-| `s3OutputPrefix` | _(required)_ | Key prefix within the output bucket (e.g. `diakumis/tidywigits/outputs`) |
-| `imageTag` | `latest` | tidywigits container image tag in ECR |
+| `workflows` | _(required)_ | Map of nemo workflow name → `{detailType, s3InputPrefix, s3OutputPrefix}`: the EventBridge `detail-type` that triggers it, and its key prefixes within the input and output buckets |
+| `nemoWorkflow` | `wigits` | Workflow run when the event names none (e.g. API Gateway); must be a `workflows` key |
+| `imageTag` | `latest` | nemo Lambda container image tag in ECR (mirrors the `nemo-image` base tag) |
 | `lambdaMemoryMB` | `6144` | Lambda memory in MB |
+| `lambdaEphemeralStorageMB` | `10240` | Lambda `/tmp` size in MB (512–10240); holds both inputs and outputs |
+
+`wigits` and `dragen` are configured. Adding a workflow = a new `workflows` entry; the
+deploy adds a matching rule. `lambda/Makefile` `NEMO_WORKFLOWS` mirrors this map by
+hand for local testing.
 
 ## Commands
 
@@ -50,10 +54,7 @@ npx cdk diff
 npx cdk deploy
 ```
 
-## Deployment order
+## Deployment
 
-CDK creates the ECR repo; you cannot push the container image until after the first deploy.
-
-1. `npx cdk deploy`: creates all resources; note the ECR repo URI in the stack outputs
-2. Tag and push the local image to ECR
-3. Test via API Gateway POST
+The stack **imports** the `nemo-lambda` ECR repo, so the repo must exist and hold the
+`imageTag` image before the first deploy. Full order is in the top-level `README.md`.
