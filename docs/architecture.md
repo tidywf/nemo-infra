@@ -1,9 +1,6 @@
 # Architecture
 
-How things stand today: one stack, `NemoStack` (`cdk/lib/NemoStack.ts`), with no VPC
-and no database. An earlier plan for a VPC + RDS Proxy + Postgres pair of stacks, with
-a TypeScript `handler.ts`, was dropped before it was built: nemo writes Parquet to S3
-instead of Postgres, so the Lambda needs nothing but internet access to S3.
+One stack, `NemoStack` (`cdk/lib/NemoStack.ts`).
 
 ```mermaid
 flowchart TD
@@ -47,65 +44,41 @@ flowchart TD
 }
 ```
 
-The S3 input path is constructed in the handler from `S3_INPUT_BUCKET` + the workflow's
-`s3InputPrefix` + `input_id` — not passed in the event. The workflow is
-`detail.workflow` if given, else the workflow whose `detailType` matches `detail-type`,
-else `nemoWorkflow`.
+  | Field          | Source                                                                                             |
+  | ---            | ---                                                                                                |
+  | Workflow       | `detail.workflow`, else the workflow whose `detailType` matches `detail-type`, else `nemoWorkflow` |
+  | S3 input path  | `S3_INPUT_BUCKET` + workflow's `s3InputPrefix` + `input_id` (not in the event)                     |
+  | S3 output path | `S3_OUTPUT_BUCKET` + workflow's `s3OutputPrefix` + ULID minted by the handler                      |
 
-The same `detail` shape is POSTed to API Gateway or passed to `aws lambda invoke` for
-manual runs (see `lambda/README.md`).
+The same `detail` shape is POSTed to API Gateway or passed to
+`aws lambda invoke` for manual runs (see `lambda/README.md`).
 
 ## NemoStack
 
-- **ECR Repo**: imported by name (`nemo-lambda`) via `fromRepositoryName`, not
-  created by the stack. It holds the Lambda container image. Lambda can only pull from
-  ECR — GHCR and Docker Hub are not valid Lambda image sources.
-- **S3**: both buckets are imported by name from CDK context. Input holds the WiGiTS /
-  DRAGEN pipeline outputs; output receives the Parquet results.
-- **IAM Role**:
-  - base: `AWSLambdaBasicExecutionRole` (CloudWatch Logs)
-  - added: `s3:GetObject` + `s3:ListBucket` on the input bucket, `grantPut` +
-    `s3:ListBucket` on the output bucket (`aws s3 sync` lists the destination)
-  - no VPC access, no Secrets Manager, no RDS — nothing to authenticate against
-- **Function**:
-  - container-based, not ZIP; `handler` and `runtime` both come `FROM_IMAGE`
-  - `timeout`: 15 min (the Lambda maximum)
-  - `memorySize`: from `lambdaMemoryMB` context, default 6 GB
-  - `ephemeralStorageSize`: from `lambdaEphemeralStorageMB` context, default 10 GB
-    (`/tmp` holds both the synced inputs and the Parquet outputs)
-  - `retryAttempts`: 0 — a retried async run would mint a new `output_id` and leave a
-    partial output prefix behind
-  - environment: `S3_INPUT_BUCKET`, `S3_OUTPUT_BUCKET`, `NEMO_WORKFLOWS`
-    (the `workflows` context as JSON), `NEMO_WORKFLOW` — read by `handler.py`
-  - architecture: default `x86_64`, so the image must be built
-    `--platform linux/amd64` even though `nemo-image` is multi-arch
-  - defaults left alone: unlimited reserved concurrency, no dead letter queue, no
-    tracing, default CloudWatch log retention
-  - implications: 10–30 sec cold start, 10 GB image size limit, each concurrent
-    execution gets its own container instance
-- **EventBridge rules**: one per `workflows` entry, on the default bus, matching its
-  `detailType` (e.g. `WigitsRunCompleted`), targeting the Lambda directly. This is the
-  primary trigger.
-- **API Gateway**: `nemo-manual` REST API with a single POST method, kept as a
-  manual escape hatch. Non-proxy integration that sets
-  `X-Amz-Invocation-Type: Event`, so it returns 202 immediately and the Lambda runs
-  async — the 15 min timeout would otherwise blow past API Gateway's 29 sec limit.
-  Non-proxy also means the POST body *is* the Lambda event (no `body` wrapper).
-  - auth: `AuthorizationType.IAM` — requests must be SigV4-signed (`awscurl
-    --service execute-api`) by a principal with `execute-api:Invoke`. Added after a
-    Security Hub "Lambda accessible through API Gateway without authorization" finding
-    on the original open endpoint (`TidywigitsStack`, May 2026).
-  - `cloudWatchRole: false`: stage logging is off, so the stack does not create the
-    account-wide `AWS::ApiGateway::Account` + CloudWatch role.
-- **CfnOutput**: Lambda function name (for direct invocation) and API URL.
+  | Resource                  | Config                                                                                                  | Why                                                                                            |
+  | ---                       | ---                                                                                                     | ---                                                                                            |
+  | ECR `nemo-lambda`         | imported via `fromRepositoryName`                                                                       | Lambda can only pull from ECR, not GHCR / Docker Hub                                           |
+  | S3 input / output         | imported by name from CDK context                                                                       |                                                                                                |
+  | IAM role                  | `AWSLambdaBasicExecutionRole` + `s3:GetObject`/`ListBucket` (input), `grantPut` + `ListBucket` (output) | `aws s3 sync` lists the destination                                                            |
+  | EventBridge rules         | one per `workflows` entry, default bus, match `detailType`, target Lambda                               | primary trigger                                                                                |
+  | API Gateway `nemo-manual` | single POST, non-proxy, `X-Amz-Invocation-Type: Event` → 202                                            | manual escape hatch; async because 15 min Lambda > 29 s API GW limit; POST body *is* the event |
+  | API Gateway auth          | `AuthorizationType.IAM` (SigV4, `execute-api:Invoke`)                                                   | Security Hub finding on the old open endpoint                                                  |
+  | API Gateway logging       | `cloudWatchRole: false`                                                                                 | avoids account-wide `AWS::ApiGateway::Account` resource                                        |
+  | CfnOutput                 | function name, API URL                                                                                  |                                                                                                |
+
+### Lambda function
+
+  | Setting                | Value                                                                           | Why                                                             |
+  | ---                    | ---                                                                             | ---                                                             |
+  | Package                | container image                                                                 |                                                                 |
+  | `timeout`              | 15 min                                                                          | Lambda max                                                      |
+  | `memorySize`           | `lambdaMemoryMB`, default 6 GB                                                  |                                                                 |
+  | `ephemeralStorageSize` | `lambdaEphemeralStorageMB`, default 10 GB                                       | `/tmp` holds synced inputs + Parquet outputs                    |
+  | `retryAttempts`        | 0                                                                               | a retry would mint a new `output_id`, leaving a partial prefix  |
+  | Architecture           | `x86_64` (default)                                                              | build with `--platform linux/amd64`; `nemo-image` is multi-arch |
+  | Environment            | `S3_INPUT_BUCKET`, `S3_OUTPUT_BUCKET`, `NEMO_WORKFLOWS` (JSON), `NEMO_WORKFLOW` |                                                                 |
+  | Left at default        | concurrency, DLQ, tracing, log retention                                        |                                                                 |
 
 ## Python handler
 
-- nemo is invoked through its CLI (`nemo.R sync` then `nemo.R tidy --workflow <wf> ...`), exposed by the
-  image; the handler does not call R functions directly.
-- `handler.py` is Python rather than TypeScript because the base image is a conda env
-  that already ships Python — adding Node.js just to shell out to an R CLI would only
-  grow the image. `awslambdaric` supplies the Lambda Runtime API polling loop that a
-  managed runtime would otherwise provide.
-- `lambda/Dockerfile` builds `FROM ghcr.io/tidywf/nemo-image:<VERSION>` and adds
-  `awslambdaric`, `awscli` and `python-ulid` via the conda env's own pip.
+Python because the base image is a conda env that already ships it.

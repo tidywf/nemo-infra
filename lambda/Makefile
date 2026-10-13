@@ -12,7 +12,7 @@ INPUT_ID         ?= 202509103c7b1a3b
 WORKFLOW         ?= $(NEMO_WORKFLOW)
 
 build:
-	docker build --platform linux/amd64 -t $(IMAGE):$(VERSION) .
+	docker build --platform linux/amd64 --provenance=false --sbom=false -t $(IMAGE):$(VERSION) .
 
 start:
 	docker run -d \

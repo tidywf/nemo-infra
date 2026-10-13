@@ -8,7 +8,8 @@ General AWS CDK notes, not specific to this repo.
   - `cdk.json`: config file
   - `bin/`: entrypoint
   - `lib/`: stacks
-- **App**: application written in e.g. TypeScript that defines one or more **Stacks**.
+- **App**: application written in e.g. TypeScript that defines one or more
+  **Stacks**.
 - **Stack**: a logical grouping of **Constructs**.
 - **Construct**: a logical grouping of **Resources**.
 - **Resource**: e.g. S3 buckets, Lambda, DynamoDB.
@@ -50,20 +51,20 @@ A construct class takes three params:
 
 ## Commands
 
-| Command                    | Description                                          |
-| -------------------------- | ---------------------------------------------------- |
-| `cdk init -l typescript`   | initialize cdk project                               |
-| `npx tsc --init`           | generate tsconfig.json                               |
-| `npm run cdk -- --version` | get local cdk version via `package.json` script      |
-| `npx cdk --version`        | same as above but more direct                        |
-| `npm run build`            | compile ts to js                                     |
-| `npm run watch`            | watch for changes and compile                        |
-| `npm run test`             | run jest unit tests                                  |
-| `npx cdk deploy`           | deploy stack                                         |
-| `npx cdk diff`             | compare current to deployed stack                    |
-| `npx cdk synth`            | emit synthesized cfn template                        |
-| `npx cdk destroy`          | destroy stack                                        |
-| `npx cdk bootstrap`        | bootstrap cdk project (**once per account/region!**) |
+  | Command                    | Description                                          |
+  | -------------------------- | ---------------------------------------------------- |
+  | `cdk init -l typescript`   | initialize cdk project                               |
+  | `npx tsc --init`           | generate tsconfig.json                               |
+  | `npm run cdk -- --version` | get local cdk version via `package.json` script      |
+  | `npx cdk --version`        | same as above but more direct                        |
+  | `npm run build`            | compile ts to js                                     |
+  | `npm run watch`            | watch for changes and compile                        |
+  | `npm run test`             | run jest unit tests                                  |
+  | `npx cdk deploy`           | deploy stack                                         |
+  | `npx cdk diff`             | compare current to deployed stack                    |
+  | `npx cdk synth`            | emit synthesized cfn template                        |
+  | `npx cdk destroy`          | destroy stack                                        |
+  | `npx cdk bootstrap`        | bootstrap cdk project (**once per account/region!**) |
 
 ## Tips
 
