@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { TidywigitsStack } from '../lib/TidywigitsStack';
+import { NemoStack } from '../lib/NemoStack';
 import { getContext } from '../helpers/parameters';
 
 const app = new cdk.App();
@@ -11,4 +11,4 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 };
 
-new TidywigitsStack(app, 'TidywigitsStack', { ctx, env });
+new NemoStack(app, 'NemoStack', { ctx, env });
