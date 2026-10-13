@@ -12,7 +12,7 @@ manual runs.
 | --------- | ----------------------------------------------------------------------- |
 | `cdk/`    | CDK app (TypeScript) defining `NemoStack`; config in `cdk/cdk.json`     |
 | `lambda/` | Lambda container (`Dockerfile`, `handler.py`) and local test `Makefile` |
-| `docs/`   | Architecture, plan/TODO, general CDK notes                              |
+| `docs/`   | Architecture, general CDK notes                                         |
 
 ## Deploy
 
@@ -28,7 +28,6 @@ manual runs.
 
 - [docs/architecture.md](docs/architecture.md): diagram, event payload, stack and
   handler design
-- [docs/plan.md](docs/plan.md): goal and TODO checklist
 - [docs/cdk-notes.md](docs/cdk-notes.md): general CDK concepts, commands and tips
 - [cdk/README.md](cdk/README.md): CDK files, `cdk.json` configuration, commands
 - [lambda/README.md](lambda/README.md): container, env vars, build/push, invoke, logs,
