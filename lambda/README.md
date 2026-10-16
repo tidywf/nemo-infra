@@ -47,10 +47,9 @@ VERSION=0.0.0.9004 # must match imageTag in cdk/cdk.json
 make build
 
 # one-off: the stack imports the repo, it does not create it
-aws ecr create-repository --repository-name $REPO --region ap-southeast-2
+aws ecr create-repository --repository-name $REPO
 
-aws ecr get-login-password --region ap-southeast-2 \
-  | docker login --username AWS --password-stdin $ECR
+aws ecr get-login-password | docker login --username AWS --password-stdin $ECR
 docker tag $REPO:$VERSION $ECR/$REPO:$VERSION
 docker push $ECR/$REPO:$VERSION
 ```
@@ -65,8 +64,8 @@ needs an explicit update:
 ```shell
 aws lambda update-function-code \
   --function-name $FN \
-  --image-uri $ECR/$REPO:$VERSION \
-  --region ap-southeast-2
+  --image-uri $ECR/$REPO:$VERSION
+
 ```
 
 ## Stack outputs
@@ -77,7 +76,6 @@ is renamed, so read them from the stack outputs:
 ```shell
 output() {
   aws cloudformation describe-stacks --stack-name NemoStack \
-    --region ap-southeast-2 \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" \
     --output text
 }
@@ -95,7 +93,7 @@ PAYLOAD='{"detail": {"input_id": "202509103c7b1a3b", "workflow": "wigits"}}'
 
 # API Gateway: IAM auth, so requests must be SigV4-signed
 # (awscurl; caller needs execute-api:Invoke)
-awscurl --service execute-api --region ap-southeast-2 \
+awscurl --service execute-api \
   -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$API"
 
 # CLI
@@ -104,7 +102,6 @@ aws lambda invoke \
   --invocation-type Event \
   --payload "$PAYLOAD" \
   --cli-binary-format raw-in-base64-out \
-  --region ap-southeast-2 \
   response.json
 ```
 
@@ -118,7 +115,7 @@ pipeline, put a synthetic event on the default bus. Leave out `detail.workflow`
 so the handler has to resolve it from `detail-type`:
 
 ```shell
-aws events put-events --region ap-southeast-2 --entries '[{
+aws events put-events --entries '[{
   "Source": "nemo.manual-test",
   "DetailType": "WigitsRunCompleted",
   "Detail": "{\"input_id\": \"202509103c7b1a3b\"}"
@@ -132,7 +129,7 @@ confirm the rule fired.
 ## Logs
 
 ```shell
-aws logs tail /aws/lambda/$FN --region ap-southeast-2 --follow
+aws logs tail /aws/lambda/$FN --follow
 ```
 
 The log group is created on the first invocation, so it can be missing for a few
@@ -141,7 +138,7 @@ swamp the output; to see just the run summary (workflow, output_id, nemo steps,
 errors, and the `REPORT` line with duration and max memory):
 
 ```shell
-aws logs tail /aws/lambda/$FN --region ap-southeast-2 --since 15m --format short \
+aws logs tail /aws/lambda/$FN --since 15m --format short \
   | grep -vE "Completed .* remaining|upload: "
 ```
 
