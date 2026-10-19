@@ -1,0 +1,23 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/app.ts",
+  "context": {
+    "s3InputBucketName": "umccr-temp-dev",
+    "s3OutputBucketName": "umccr-temp-dev",
+    "imageTag": "0.0.0.9004",
+    "workflows": {
+      "wigits": {
+        "detailType": "WigitsRunCompleted",
+        "s3InputPrefix": "diakumis/tidywigits/inputs/oncoanalyser-wgts-dna",
+        "s3OutputPrefix": "diakumis/tidywigits/outputs"
+      },
+      "dragen": {
+        "detailType": "DragenRunCompleted",
+        "s3InputPrefix": "diakumis/tidydragen/inputs/dragen-wgts-dna",
+        "s3OutputPrefix": "diakumis/tidydragen/outputs"
+      }
+    },
+    "nemoWorkflow": "wigits",
+    "lambdaMemoryMB": 6144,
+    "lambdaEphemeralStorageMB": 10240
+  }
+}
