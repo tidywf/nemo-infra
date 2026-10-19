@@ -59,13 +59,12 @@ Then `npx cdk deploy` from `cdk/`.
 ### Redeploying an image under an existing tag
 
 The Lambda pins the image digest at deploy time, so re-pushing the same tag
-needs an explicit update:
+needs an explicit update (`$FN` from [Stack outputs](#stack-outputs)):
 
 ```shell
 aws lambda update-function-code \
   --function-name $FN \
   --image-uri $ECR/$REPO:$VERSION
-
 ```
 
 ## Stack outputs
@@ -85,18 +84,34 @@ API=$(output ApiGatewayUrl)
 
 ## Invoke
 
-Both paths are async: API Gateway returns 202, the CLI `Event` invocation
-returns immediately. `workflow` is optional (falls back as above).
+Three paths, all async. API Gateway and the CLI pass the payload through as the
+event, with no `detail-type`, so a payload without `detail.workflow` runs
+`NEMO_WORKFLOW` (`wigits`). For dragen, set `"workflow": "dragen"`.
 
 ```shell
 PAYLOAD='{"detail": {"input_id": "202509103c7b1a3b", "workflow": "wigits"}}'
+```
 
-# API Gateway: IAM auth, so requests must be SigV4-signed
-# (awscurl; caller needs execute-api:Invoke)
+### API Gateway
+
+Exercises the manual endpoint and its IAM auth. Requests must be SigV4-signed
+(`awscurl`), and the caller needs `execute-api:Invoke`. Returns 202.
+
+```shell
 awscurl --service execute-api \
   -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$API"
+```
 
-# CLI
+`awscurl` prints nothing on success: the 202 integration response has no body.
+Add `-v` to see the status, but note it also prints the signed headers,
+including the session token.
+
+### CLI
+
+Invokes the function directly, bypassing API Gateway. The caller needs
+`lambda:InvokeFunction`. An `Event` invocation returns immediately.
+
+```shell
 aws lambda invoke \
   --function-name $FN \
   --invocation-type Event \
@@ -105,14 +120,12 @@ aws lambda invoke \
   response.json
 ```
 
-`awscurl` prints nothing on success: the 202 integration response has no body.
-Add `-v` to see the status, but note it also prints the signed headers,
-including the session token.
+### EventBridge
 
-In production the trigger is the EventBridge rule per workflow
-(`WigitsRunCompleted`, `DragenRunCompleted`). To exercise a rule without the
-pipeline, put a synthetic event on the default bus. Leave out `detail.workflow`
-so the handler has to resolve it from `detail-type`:
+The production trigger: one rule per workflow (`WigitsRunCompleted`,
+`DragenRunCompleted`). To exercise a rule without the pipeline, put a synthetic
+event on the default bus (the caller needs `events:PutEvents`). Leave out
+`detail.workflow` so the handler has to resolve it from `detail-type`:
 
 ```shell
 aws events put-events --entries '[{

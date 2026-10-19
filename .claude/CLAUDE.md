@@ -26,8 +26,7 @@ nemo-infra/
 │   ├── handler.py              # Receives event, runs nemo.R sync + tidy, syncs outputs back
 │   └── Makefile                # build / start / invoke / logs / stop / test (local RIE)
 └── docs/
-    ├── architecture.md         # Diagram, event payload, stack + handler design
-    └── cdk-notes.md            # General CDK concepts/commands/tips (not repo-specific)
+    └── architecture.md         # Diagram, event payload, stack + handler design
 ```
 
 Docs are deliberately non-overlapping: design → `docs/architecture.md`, deploy order →
@@ -114,6 +113,9 @@ which is the quickest way to check what a workflow will pull down.
   `docker build` on Apple Silicon silently produces an **arm64** image. The stack does
   not set `architecture`, so the Lambda is `x86_64` and would reject it — always build
   and run with `--platform linux/amd64` (the `lambda/Makefile` targets do).
+- **Image manifest**: build with `--provenance=false --sbom=false` (`make build` does).
+  Otherwise BuildKit pushes an OCI image index with attestation manifests, which Lambda
+  rejects ("image manifest, config or layer media type … is not supported").
 - **GHCR auth**: stale Docker credentials for `ghcr.io` cause `denied` errors.
   Run `docker logout ghcr.io` to fall back to anonymous pulls. `nemo-image` may need a
   real login (`gh auth token | docker login ghcr.io -u <user> --password-stdin`).

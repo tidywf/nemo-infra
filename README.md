@@ -1,6 +1,6 @@
 # nemo infrastructure
 
-AWS infrastructure for running [nemo](https://github.com/umccr/nemo) tidy jobs as a
+AWS infrastructure for running [nemo](https://github.com/tidywf/nemo) tidy jobs as a
 container Lambda. An EventBridge event (e.g. `WigitsRunCompleted`) triggers the Lambda,
 which syncs the run's parse-relevant files from S3, runs `nemo.R tidy`, and writes
 Parquet results back to S3. An IAM-authenticated API Gateway POST endpoint is kept for
@@ -12,7 +12,7 @@ manual runs.
 | --------- | ----------------------------------------------------------------------- |
 | `cdk/`    | CDK app (TypeScript) defining `NemoStack`; config in `cdk/cdk.json`     |
 | `lambda/` | Lambda container (`Dockerfile`, `handler.py`) and local test `Makefile` |
-| `docs/`   | Architecture, general CDK notes                                         |
+| `docs/`   | Architecture: diagram, event payload, stack and handler design          |
 
 ## Deploy
 
@@ -28,7 +28,7 @@ manual runs.
 
 - [docs/architecture.md](docs/architecture.md): diagram, event payload, stack and
   handler design
-- [docs/cdk-notes.md](docs/cdk-notes.md): general CDK concepts, commands and tips
+- [tidywf/wiki: AWS CDK](https://github.com/tidywf/wiki/blob/main/aws_cdk.md): general CDK concepts, commands and tips
 - [cdk/README.md](cdk/README.md): CDK files, `cdk.json` configuration, commands
 - [lambda/README.md](lambda/README.md): container, env vars, build/push, invoke, logs,
   local RIE smoke test
