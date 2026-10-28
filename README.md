@@ -1,105 +1,34 @@
 # nemo infrastructure
 
-Infrastructure for [nemo](https://github.com/umccr/nemo) using AWS CDK.
+AWS infrastructure for running [nemo](https://github.com/tidywf/nemo) tidy jobs as a
+container Lambda. An EventBridge event (e.g. `WigitsRunCompleted`) triggers the Lambda,
+which syncs the run's parse-relevant files from S3, runs `nemo.R tidy`, and writes
+Parquet results back to S3. An IAM-authenticated API Gateway POST endpoint is kept for
+manual runs.
 
-## Notes
+## Layout
 
-- **Project**: files and folders with CDK code.
+| Path      | What                                                                    |
+| --------- | ----------------------------------------------------------------------- |
+| `cdk/`    | CDK app (TypeScript) defining `NemoStack`; config in `cdk/cdk.json`     |
+| `lambda/` | Lambda container (`Dockerfile`, `handler.py`) and local test `Makefile` |
+| `docs/`   | Architecture: diagram, event payload, stack and handler design          |
 
-  - `cdk.json`: config file
-  - `bin/`: entrypoint
-  - `lib/`: stacks
+## Deploy
 
-- **App**: application written in e.g. TypeScript that defines one or more
-  **Stacks**.
-- **Stack**: a logical grouping of **Constructs**.
-- **Construct**: a logical grouping of **Resources**.
-- **Resource**: e.g. S3 buckets, Lambda, DynamoDB.
+1. Build the image (`linux/amd64`) and push it to the `nemo-lambda` ECR repo under
+   the `imageTag` in `cdk/cdk.json`. The stack imports the repo, so it must exist
+   first. See [lambda/README.md](lambda/README.md#build-and-push-to-ecr).
+2. `cd cdk && npx cdk diff && npx cdk deploy`. See [cdk/README.md](cdk/README.md).
+3. Test with a signed POST to the `ApiGatewayUrl` stack output (`awscurl`), then
+   confirm the EventBridge rule fires once the pipeline emits its event. See
+   [lambda/README.md](lambda/README.md#invoke).
 
-### Constructs
+## Docs
 
-A construct class takes three params:
-
-- **scope**: construct's parent/owner; use `this` to say the stack is its
-  parent.
-- **id**: logical ID of construct within app; used as namespace; should be
-  unique within scope.
-- **props**: bundle of key-values passed in an object; can be omitted if all
-  optional.
-
-#### AWS Construct Links
-
-- Hub - https://constructs.dev/
-
-  - e.g. GitHub Actions OIDC:
-    - https://constructs.dev/packages/aws-cdk-github-oidc
-    - https://github.com/aripalo/aws-cdk-github-oidc
-
-- Library
-  - https://docs.aws.amazon.com/cdk/api/v2/docs/aws-construct-library.html
-
-#### Construct Levels
-
-- L1: low level CFN Resources that are named `CfnXyz` e.g.
-  [CfnBucket][l1-bucket]
-- L2: higher level with convenient defaults e.g. [s3.Bucket][l2-bucket]
-- L3: patterns that help with common tasks involving multiple resources e.g.
-  [aws-apigateway.LambdaRestApi][l3-apilambda].
-
-[l1-bucket]:
-  https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.CfnBucket.html
-[l2-bucket]:
-  https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html
-[l3-apilambda]:
-  https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigateway.LambdaRestApi.html
-
-## Commands
-
-| Command                  | Description                       |
-| ------------------------ | --------------------------------- |
-| `cdk init -l typescript` | initialize cdk project            |
-| `npm run build`          | compile ts to js                  |
-| `npm run watch`          | watch for changes and compile     |
-| `npm run test`           | run jest unit tests               |
-| `npx cdk deploy`         | deploy stack                      |
-| `npx cdk diff`           | compare current to deployed stack |
-| `npx cdk synth`          | emit synthesized cfn template     |
-| `npx cdk destroy`        | destroy stack                     |
-| `npx cdk bootstrap`      | bootstrap cdk project             |
-
-## Tips
-
-- Debug bucket names
-  - Use `CfnOutput` and check `cdk synth`
-
-```ts
-import { CfnOutput } from 'aws-cdk-lib';
-
-const l2bucket = new Bucket(this, 'foo');
-new CfnOutput(this, 'output1', {
-  value: l2bucket.bucketName,
-});
-```
-
-- Use deploy parameter:
-
-```ts
- const duration = new CfnParameter(this, 'duration', {
-   default: 6,
-   minValue: 1,
-   maxValue: 10,
-   type: 'Number',
- });
- const l2bucket = new Bucket(this, 'nemo-l2-dev', {
-   lifecycleRules: [
-     {
-       expiration: Duration.days(duration.valueAsNumber),
-     },
-   ],
- });
-```
-Then:
-
-```shell
-cdk deploy --parameters duration=8
-```
+- [docs/architecture.md](docs/architecture.md): diagram, event payload, stack and
+  handler design
+- [tidywf/wiki: AWS CDK](https://github.com/tidywf/wiki/blob/main/aws_cdk.md): general CDK concepts, commands and tips
+- [cdk/README.md](cdk/README.md): CDK files, `cdk.json` configuration, commands
+- [lambda/README.md](lambda/README.md): container, env vars, build/push, invoke, logs,
+  local RIE smoke test
