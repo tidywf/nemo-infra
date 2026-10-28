@@ -13,8 +13,8 @@ Lambda container for running nemo tidy jobs.
   2. `nemo.R tidy --workflow <wf>`: tidies them to Parquet
   3. `aws s3 sync`: uploads the outputs to
      `s3://<S3_OUTPUT_BUCKET>/<s3OutputPrefix>/<output_id>/`
-- `Dockerfile`: extends `nemo-image`, installing `awslambdaric`, `awscli` and
-  `python-ulid` with the conda env's own `pip`, and runs
+- `Dockerfile`: extends `nemo-image`, installing `awslambdaric` and `python-ulid`
+  (`awscli` comes with the base image) with the conda env's own `pip`, and runs
   `python3 -m awslambdaric`. `awslambdaric` (Lambda Runtime Interface Client)
   implements the Runtime API polling loop that managed runtimes provide; without
   it Lambda cannot invoke the handler.
@@ -42,7 +42,7 @@ manifest, config or layer media type … is not supported".
 ```shell
 ECR=843407916570.dkr.ecr.ap-southeast-2.amazonaws.com
 REPO=nemo-lambda   # local image name (Makefile IMAGE) and ECR repo (NemoStack.ts)
-VERSION=0.0.0.9004 # must match imageTag in cdk/cdk.json
+VERSION=0.1.2      # must match imageTag in cdk/cdk.json
 
 make build
 

@@ -3,7 +3,7 @@
   "context": {
     "s3InputBucketName": "umccr-temp-dev",
     "s3OutputBucketName": "umccr-temp-dev",
-    "imageTag": "0.0.0.9004",
+    "imageTag": "0.1.2",
     "workflows": {
       "wigits": {
         "detailType": "WigitsRunCompleted",

@@ -22,7 +22,7 @@ nemo-infra/
 │   ├── cdk.json                # CDK context (buckets, workflows, image tag, memory, /tmp)
 │   └── package.json            # aws-cdk-lib, aws-cdk CLI, ts-node, typescript
 ├── lambda/                     # Lambda container; README: build/push, invoke, logs, RIE
-│   ├── Dockerfile              # Extends nemo-image; installs awslambdaric + awscli + python-ulid
+│   ├── Dockerfile              # Extends nemo-image; installs awslambdaric + python-ulid
 │   ├── handler.py              # Receives event, runs nemo.R sync + tidy, syncs outputs back
 │   └── Makefile                # build / start / invoke / logs / stop / test (local RIE)
 └── docs/
@@ -53,12 +53,12 @@ Single stack — no VPC, no database dependency.
 ## Lambda container
 
 `lambda/Dockerfile` extends `nemo-image` (the composite nemo + tidywigits + tidydragen
-conda env image) with `awslambdaric`, `awscli` and `python-ulid`, installed via the
-env's own pip:
+conda env image, which already ships `awscli` v2) with `awslambdaric` and `python-ulid`,
+installed via the env's own pip:
 
 ```
-FROM ghcr.io/tidywf/nemo-image:0.0.0.9004
-  → pip install awslambdaric awscli python-ulid
+FROM ghcr.io/tidywf/nemo-image:0.1.2
+  → pip install awslambdaric python-ulid
   → COPY handler.py
   → ENTRYPOINT: python3 -m awslambdaric
   → CMD: handler.handler
@@ -123,7 +123,7 @@ which is the quickest way to check what a workflow will pull down.
   image sources. The repo (`nemo-lambda`) is **imported** via `fromRepositoryName`, so
   the stack does not create it — it must exist, with the image already pushed, before
   the first deploy.
-- **imageTag in cdk.json**: must match the tag pushed to ECR. Currently `0.0.0.9004`,
+- **imageTag in cdk.json**: must match the tag pushed to ECR. Currently `0.1.2`,
   mirroring the `nemo-image` base tag.
 - **Output bucket ListBucket**: `aws s3 sync` lists the destination before uploading,
   so the role has `s3:ListBucket` on the output bucket as well as `PutObject`.

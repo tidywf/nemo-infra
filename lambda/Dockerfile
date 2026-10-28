@@ -1,7 +1,7 @@
-FROM ghcr.io/tidywf/nemo-image:0.0.0.9004
+FROM ghcr.io/tidywf/nemo-image:0.1.2
 
 # use pip from the nemo conda env
-RUN pip install awslambdaric awscli python-ulid
+RUN pip install awslambdaric python-ulid
 
 WORKDIR /var/task
 COPY handler.py ./

@@ -1,5 +1,5 @@
 IMAGE   := nemo-lambda
-VERSION := 0.0.0.9004
+VERSION := 0.1.2
 PORT    := 9000
 
 S3_INPUT_BUCKET  ?= umccr-temp-dev
