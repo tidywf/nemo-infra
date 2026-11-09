@@ -44,14 +44,17 @@ hand for local testing.
 Run from this directory (`cdk/`):
 
 ```shell
+# install deps (pnpm-lock.yaml)
+pnpm install
+
 # preview the CloudFormation template without deploying
-npx cdk synth
+pnpm cdk synth
 
 # diff against what is currently deployed
-npx cdk diff
+pnpm cdk diff
 
 # deploy the stack
-npx cdk deploy
+pnpm cdk deploy
 ```
 
 ## Deployment

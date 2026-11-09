@@ -19,7 +19,7 @@ manual runs.
 1. Build the image (`linux/amd64`) and push it to the `nemo-lambda` ECR repo under
    the `imageTag` in `cdk/cdk.json`. The stack imports the repo, so it must exist
    first. See [lambda/README.md](lambda/README.md#build-and-push-to-ecr).
-2. `cd cdk && npx cdk diff && npx cdk deploy`. See [cdk/README.md](cdk/README.md).
+2. `cd cdk && pnpm install && pnpm cdk diff && pnpm cdk deploy`. See [cdk/README.md](cdk/README.md).
 3. Test with a signed POST to the `ApiGatewayUrl` stack output (`awscurl`), then
    confirm the EventBridge rule fires once the pipeline emits its event. See
    [lambda/README.md](lambda/README.md#invoke).

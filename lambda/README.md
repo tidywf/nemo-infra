@@ -54,7 +54,7 @@ docker tag $REPO:$VERSION $ECR/$REPO:$VERSION
 docker push $ECR/$REPO:$VERSION
 ```
 
-Then `npx cdk deploy` from `cdk/`.
+Then `pnpm cdk deploy` from `cdk/`.
 
 ### Redeploying an image under an existing tag
 

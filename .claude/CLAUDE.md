@@ -135,18 +135,18 @@ which is the quickest way to check what a workflow will pull down.
   after it never applies.
 - **Node / deps**: Node 26 via `.node-version` (fnm). `@types/node` tracks the Node
   major, not npm latest. `typescript` is held at 6: `ts-node` (the `cdk.json` `app`
-  runner) relies on the TS compiler API that 7 changed. Check with `npm outdated`.
+  runner) relies on the TS compiler API that 7 changed. Check with `pnpm outdated`.
 
 ## Deployment order
 
 See the top-level `README.md`. In short: image in ECR first (the stack imports the
-repo), then `npx cdk deploy`, then a signed POST (`awscurl`) to `ApiGatewayUrl`.
+repo), then `pnpm cdk deploy`, then a signed POST (`awscurl`) to `ApiGatewayUrl`.
 
 ## CDK commands
 
 ```bash
 cd cdk
-npx cdk synth       # preview CloudFormation
-npx cdk diff        # diff against deployed stack
-npx cdk deploy      # deploy NemoStack
+pnpm cdk synth      # preview CloudFormation
+pnpm cdk diff       # diff against deployed stack
+pnpm cdk deploy     # deploy NemoStack
 ```
