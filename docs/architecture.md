@@ -14,7 +14,7 @@ flowchart TD
         EB["EventBridge<br/>default bus<br/>detail-type: WigitsRunCompleted / DragenRunCompleted<br/>(one rule per workflow)"]
         APIGW["API Gateway<br/>POST / (IAM auth, async, 202)"]
 
-        Lambda["Lambda<br/>(container image)<br/>nemo.R sync + tidy --workflow &lt;wf&gt;<br/>15 min / 6 GB / 10 GB tmp / x86_64"]
+        Lambda["Lambda<br/>(container image)<br/>nemo.R s3sync + tidy --workflow &lt;wf&gt;<br/>15 min / 6 GB / 10 GB tmp / x86_64"]
 
         ECR["ECR: nemo-lambda<br/>(nemo-image + awslambdaric)"]
         S3Out["S3 bucket<br/>(Parquet results)"]

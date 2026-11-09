@@ -7,7 +7,7 @@ from ulid import ULID
 
 # Per-workflow config (`detailType`, `s3InputPrefix`, `s3OutputPrefix`), keyed
 # by nemo workflow name; mirrors the `workflows` context in cdk.json. Download
-# filters are not kept here: `nemo.R sync` derives them from the workflow's own
+# filters are not kept here: `nemo.R s3sync` derives them from the workflow's own
 # tool schemas.
 WORKFLOWS = json.loads(os.environ['NEMO_WORKFLOWS'])
 # fallback when the event names no workflow (e.g. API Gateway, local RIE)
@@ -52,10 +52,10 @@ def handler(event, context):
         os.makedirs(in_dir)
         os.makedirs(out_dir)
 
-        print(f"Running nemo sync --workflow {workflow}")
+        print(f"Running nemo s3sync --workflow {workflow}")
         subprocess.run(
             [
-                'nemo.R', 'sync',
+                'nemo.R', 's3sync',
                 '--workflow', workflow,
                 '--src', s3_path,
                 '--dest', in_dir,
@@ -68,7 +68,7 @@ def handler(event, context):
             [
                 'nemo.R', 'tidy',
                 '--workflow', workflow,
-                '--in_dir', in_dir,
+                '--input_dir', in_dir,
                 '--output_dir', out_dir,
                 '--input_id', input_id,
                 '--output_id', output_id,

@@ -8,7 +8,7 @@ Lambda container for running nemo tidy jobs.
   resolves the workflow (`detail.workflow`, else the one whose `detailType`
   matches the event's `detail-type`, else `NEMO_WORKFLOW`), generates a ULID
   `output_id`, then:
-  1. `nemo.R sync`: downloads only the raw files the workflow's `schema.yaml`
+  1. `nemo.R s3sync`: downloads only the raw files the workflow's `schema.yaml`
      files parse
   2. `nemo.R tidy --workflow <wf>`: tidies them to Parquet
   3. `aws s3 sync`: uploads the outputs to
@@ -42,7 +42,7 @@ manifest, config or layer media type … is not supported".
 ```shell
 ECR=843407916570.dkr.ecr.ap-southeast-2.amazonaws.com
 REPO=nemo-lambda   # local image name (Makefile IMAGE) and ECR repo (NemoStack.ts)
-VERSION=0.1.2      # must match imageTag in cdk/cdk.json
+VERSION=0.1.4      # must match imageTag in cdk/cdk.json
 
 make build
 

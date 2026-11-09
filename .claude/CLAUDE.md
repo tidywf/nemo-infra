@@ -23,7 +23,7 @@ nemo-infra/
 │   └── package.json            # aws-cdk-lib, aws-cdk CLI, ts-node, typescript
 ├── lambda/                     # Lambda container; README: build/push, invoke, logs, RIE
 │   ├── Dockerfile              # Extends nemo-image; installs awslambdaric + python-ulid
-│   ├── handler.py              # Receives event, runs nemo.R sync + tidy, syncs outputs back
+│   ├── handler.py              # Receives event, runs nemo.R s3sync + tidy, syncs outputs back
 │   └── Makefile                # build / start / invoke / logs / stop / test (local RIE)
 └── docs/
     └── architecture.md         # Diagram, event payload, stack + handler design
@@ -57,7 +57,7 @@ conda env image, which already ships `awscli` v2) with `awslambdaric` and `pytho
 installed via the env's own pip:
 
 ```
-FROM ghcr.io/tidywf/nemo-image:0.1.2
+FROM ghcr.io/tidywf/nemo-image:0.1.4
   → pip install awslambdaric python-ulid
   → COPY handler.py
   → ENTRYPOINT: python3 -m awslambdaric
@@ -73,7 +73,7 @@ syncs inputs to a temp dir, runs `nemo.R tidy`, then syncs Parquet outputs back 
 ```
 nemo.R tidy \
   --workflow   wigits \
-  --in_dir     <tmp>/input \
+  --input_dir  <tmp>/input \
   --output_dir <tmp>/output \
   --input_id   <input_id> \
   --output_id  <ulid> \
@@ -81,16 +81,16 @@ nemo.R tidy \
   --format     parquet
 ```
 
-Input download is `nemo.R sync`, which builds its `aws s3 sync` include/exclude
+Input download is `nemo.R s3sync`, which builds its `aws s3 sync` include/exclude
 patterns from the workflow's own `schema.yaml` files (`nemo::wf_sync_patterns()`),
 so only parse-relevant files land in the Lambda's `/tmp` — no BAMs. There is no
 pattern list in this repo to keep in step with the parsers:
 
 ```
-nemo.R sync --workflow <workflow> --src <s3 path> --dest <tmp>/input
+nemo.R s3sync --workflow <workflow> --src <s3 path> --dest <tmp>/input
 ```
 
-`nemo.R sync --show_patterns` prints the include/exclude list without syncing,
+`nemo.R s3sync --show_patterns` prints the include/exclude list without syncing,
 which is the quickest way to check what a workflow will pull down.
 
 ## Key gotchas
@@ -123,7 +123,7 @@ which is the quickest way to check what a workflow will pull down.
   image sources. The repo (`nemo-lambda`) is **imported** via `fromRepositoryName`, so
   the stack does not create it — it must exist, with the image already pushed, before
   the first deploy.
-- **imageTag in cdk.json**: must match the tag pushed to ECR. Currently `0.1.2`,
+- **imageTag in cdk.json**: must match the tag pushed to ECR. Currently `0.1.4`,
   mirroring the `nemo-image` base tag.
 - **Output bucket ListBucket**: `aws s3 sync` lists the destination before uploading,
   so the role has `s3:ListBucket` on the output bucket as well as `PutObject`.
