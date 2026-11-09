@@ -42,7 +42,7 @@ manifest, config or layer media type … is not supported".
 ```shell
 ECR=843407916570.dkr.ecr.ap-southeast-2.amazonaws.com
 REPO=nemo-lambda   # local image name (Makefile IMAGE) and ECR repo (NemoStack.ts)
-VERSION=0.1.4      # must match imageTag in cdk/cdk.json
+VERSION=0.1.5      # must match imageTag in cdk/cdk.json
 
 make build
 

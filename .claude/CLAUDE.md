@@ -57,7 +57,7 @@ conda env image, which already ships `awscli` v2) with `awslambdaric` and `pytho
 installed via the env's own pip:
 
 ```
-FROM ghcr.io/tidywf/nemo-image:0.1.4
+FROM ghcr.io/tidywf/nemo-image:0.1.5
   → pip install awslambdaric python-ulid
   → COPY handler.py
   → ENTRYPOINT: python3 -m awslambdaric
@@ -123,7 +123,7 @@ which is the quickest way to check what a workflow will pull down.
   image sources. The repo (`nemo-lambda`) is **imported** via `fromRepositoryName`, so
   the stack does not create it — it must exist, with the image already pushed, before
   the first deploy.
-- **imageTag in cdk.json**: must match the tag pushed to ECR. Currently `0.1.4`,
+- **imageTag in cdk.json**: must match the tag pushed to ECR. Currently `0.1.5`,
   mirroring the `nemo-image` base tag.
 - **Output bucket ListBucket**: `aws s3 sync` lists the destination before uploading,
   so the role has `s3:ListBucket` on the output bucket as well as `PutObject`.
