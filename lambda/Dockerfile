@@ -1,4 +1,4 @@
-FROM ghcr.io/tidywf/nemo-image:0.1.5
+FROM ghcr.io/tidywf/nemo-image:0.1.6
 
 # use pip from the nemo conda env
 RUN pip install awslambdaric python-ulid
