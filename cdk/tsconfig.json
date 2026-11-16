@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "commonjs",
+    "types": ["node"],
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["bin/**/*", "lib/**/*", "helpers/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
